@@ -332,7 +332,7 @@
 </head>
 <body>
     <header>
-        <h1>黃黃家發票系統</h1> 
+        <h1>𝓑𝓻𝓸𝓬𝓴_𝓚𝓲𝓷𝓰 の 𝓓𝓒 發票系統</h1> 
         <div id="auth-controls">
             <button id="login-btn">登入</button>
         </div>
@@ -477,40 +477,25 @@
 
         // --- 完整的且正確的中獎號碼資料結構 ---
         const allWinningNumbers = {
+            '204901': { 
+                term: '尚未開始啟用', 
+                special: '預計啟用時間', 
+                first: ['3月中'], 
+                second: ['才會啟用'], 
+                third: ['造成不便請見諒']
             '205002': { 
                 term: '發票兌換方式', 
                 special: '若是中獎', 
-                first: ['請聯絡負責人'], 
+                first: ['請找到阿綸'], 
                 second: ['進行兌獎'], 
                 third: ['期限為1個月內!']
             },
             '205001': { 
                 term: '中獎發票未在期限內兌換處理方式', 
                 special: '請先聯絡版主', 
-                first: ['依照版主的指示'], 
+                first: ['依照阿綸的指示'], 
                 second: ['進行處理'], 
-                third: ['延期過久無法受理']
-            },
-             '202603': { 
-                term: '115年3月', 
-                special: '42658712', 
-                first: ['99134721'], 
-                second: ['64555912'], 
-                third: ['12749456']
-            },
-             '202602': { 
-                term: '115年2月', 
-                special: '76147215', 
-                first: ['54718236'], 
-                second: ['00572216'], 
-                third: ['31245768']
-            },
-             '202601': { 
-                term: '115年1月', 
-                special: '12447815', 
-                first: ['64791567'], 
-                second: ['06456104'], 
-                third: ['16647201']
+                third: ['延期過久無法受理']            
             },
         };
         
@@ -594,3 +579,346 @@
             // 三獎
             if (winningData.third && winningData.third.length > 0) {
                  winningData.third.map(n => n.slice(-3)).forEach(t => winningLastThree.push(t));
+            }
+            
+            const uniqueWinningLastThree = [...new Set(winningLastThree)];
+            
+            // 檢查末三碼
+            return uniqueWinningLastThree.includes(invLastThree);
+        }
+        
+        // --- 核心功能：動態生成月份選單 ---
+        function generateMonthOptions() {
+            const sortedKeys = Object.keys(allWinningNumbers).sort((a, b) => b.localeCompare(a));
+            const options = [];
+
+            sortedKeys.forEach(monthKey => {
+                 if (allWinningNumbers[monthKey]) {
+                    const option = document.createElement('option');
+                    option.textContent = allWinningNumbers[monthKey].term; 
+                    option.value = monthKey;
+                    options.push(option);
+                }
+            });
+            
+            winningSelectAnnouncement.innerHTML = '';
+            winningSelectBulk.innerHTML = '';
+            winningSelectSingle.innerHTML = '';
+            
+            if (options.length === 0) {
+                 const defaultOption = document.createElement('option');
+                 defaultOption.textContent = '無可用期別';
+                 defaultOption.value = '';
+                 
+                 winningSelectAnnouncement.appendChild(defaultOption.cloneNode(true));
+                 winningSelectBulk.appendChild(defaultOption.cloneNode(true));
+                 winningSelectSingle.appendChild(defaultOption.cloneNode(true));
+            } else {
+                 options.forEach(opt => {
+                    winningSelectAnnouncement.appendChild(opt.cloneNode(true));
+                    winningSelectBulk.appendChild(opt.cloneNode(true));
+                    winningSelectSingle.appendChild(opt.cloneNode(true));
+                });
+            }
+
+            updateAnnouncementNumbers();
+        }
+
+        // --- 核心功能：更新公告區塊的號碼顯示 (確保所有獎項都能顯示) ---
+        window.updateAnnouncementNumbers = function() {
+            const selectedMonthKey = winningSelectAnnouncement.value;
+            const winningData = allWinningNumbers[selectedMonthKey];
+            
+            if (!winningData) {
+                specialPrizeNum.textContent = '無號碼';
+                firstPrizeNum.textContent = '無號碼';
+                secondPrizeNum.textContent = '無號碼';
+                thirdPrizeNum.textContent = '無號碼';
+                return;
+            }
+
+            // 1. 特獎號碼 
+            specialPrizeNum.textContent = winningData.special || '無號碼';
+            
+            // 2. 頭獎號碼 (只顯示一組或用逗號分隔)
+            if (winningData.first && winningData.first.length > 0) {
+                 firstPrizeNum.textContent = winningData.first.join(', '); 
+            } else {
+                 firstPrizeNum.textContent = '無號碼';
+            }
+            
+            // 3. 二獎號碼 
+            if (winningData.second && winningData.second.length > 0) {
+                 secondPrizeNum.textContent = winningData.second.join(', ');
+            } else {
+                 secondPrizeNum.textContent = '無號碼';
+            }
+            
+            // 4. 三獎號碼 
+            if (winningData.third && winningData.third.length > 0) {
+                 thirdPrizeNum.textContent = winningData.third.join(', ');
+            } else {
+                 thirdPrizeNum.textContent = '無號碼';
+            }
+        }
+        
+        // --- 輔助函式：渲染已儲存發票列表 ---
+        function renderSavedInvoices() {
+            savedInvoicesList.innerHTML = '';
+            const invoices = userInvoices[currentUser] || [];
+            invoiceCountSpan.textContent = invoices.length;
+            
+             if (invoices.length === 0) {
+                 savedInvoicesList.innerHTML = '<li>目前沒有已儲存的發票。</li>';
+                 return;
+            }
+            
+            invoices.forEach(inv => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${inv}</span>
+                    <button class="delete-btn" onclick="deleteInvoice('${inv}')">[X] 刪除</button>
+                `;
+                savedInvoicesList.appendChild(li);
+            });
+        }
+        
+        // --- 輔助函式：刪除發票 ---
+        window.deleteInvoice = function(invoiceNumber) {
+            if (confirm(`確定要刪除發票號碼 ${invoiceNumber} 嗎？`)) {
+                const index = userInvoices[currentUser].indexOf(invoiceNumber);
+                if (index > -1) {
+                    userInvoices[currentUser].splice(index, 1);
+                    renderSavedInvoices();
+                    bulkResultMessage.textContent = '';
+                    saveUserData(); // 更新 localStorage
+                }
+            }
+        }
+        
+        // --- 登入/登出控制 ---
+        function updateAuthControls() {
+            authControls.innerHTML = ''; 
+            
+            if (isAuthenticated) {
+                const welcomeSpan = document.createElement('span');
+                welcomeSpan.textContent = `歡迎，${currentUser}！`;
+                const logoutButton = document.createElement('button');
+                logoutButton.textContent = '登出';
+                logoutButton.id = 'logout-btn';
+                logoutButton.addEventListener('click', logout);
+
+                authControls.appendChild(welcomeSpan);
+                authControls.appendChild(logoutButton);
+                
+                invoiceManagement.style.display = 'block';
+                renderSavedInvoices();
+                showPage('invoice-section');
+
+            } else {
+                const loginButton = document.createElement('button');
+                loginButton.textContent = '登入';
+                loginButton.id = 'login-btn';
+                loginButton.addEventListener('click', () => showPage('login-section'));
+                
+                authControls.appendChild(loginButton);
+                
+                invoiceManagement.style.display = 'none';
+                bulkResultMessage.textContent = '';
+                showPage('invoice-section'); // 登出後仍然停留在發票對獎頁面
+            }
+        }
+
+        function logout() {
+            isAuthenticated = false;
+            currentUser = null;
+            localStorage.removeItem(LS_CURRENT_USER); // 移除登入狀態
+            alert('已登出。');
+            updateAuthControls();
+        }
+
+        // --- 啟動函式 ---
+        document.addEventListener('DOMContentLoaded', () => {
+             generateMonthOptions(); 
+             updateAuthControls();
+             
+             document.getElementById('show-register-btn').addEventListener('click', () => {
+                 document.getElementById('register-message').textContent = ''; 
+                 document.getElementById('register-form').reset();
+                 showPage('register-section');
+             });
+             
+             document.getElementById('back-to-login-btn').addEventListener('click', () => {
+                 showPage('login-section');
+             });
+        });
+
+
+        // --- 登入/註冊/儲存發票邏輯 ---
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (users[username] === password) {
+                isAuthenticated = true;
+                currentUser = username;
+                localStorage.setItem(LS_CURRENT_USER, currentUser); // 儲存登入狀態
+                if (!userInvoices[currentUser]) userInvoices[currentUser] = [];
+                alert(`登入成功！歡迎 ${currentUser}`);
+                updateAuthControls();
+                loginForm.reset(); 
+            } else {
+                alert('使用者名稱或密碼錯誤！');
+            }
+        });
+
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const confirmPassword = document.getElementById('reg-confirm-password').value;
+            
+            const registerMessage = document.getElementById('register-message');
+            registerMessage.textContent = '';
+
+            if (password.length < 4) {
+                 registerMessage.textContent = '密碼長度必須至少為4個字元。';
+                 registerMessage.style.color = 'red';
+                 return;
+            }
+            if (password !== confirmPassword) {
+                 registerMessage.textContent = '兩次輸入的密碼不一致。';
+                 registerMessage.style.color = 'red';
+                 return;
+            }
+            if (username === '') {
+                 registerMessage.textContent = '使用者名稱不能為空。';
+                 registerMessage.style.color = 'red';
+                 return;
+            }
+            if (users.hasOwnProperty(username)) {
+                registerMessage.textContent = '使用者名稱已存在。';
+                registerMessage.style.color = 'red';
+                return;
+            }
+
+            users[username] = password; 
+            userInvoices[username] = []; 
+            saveUserData(); // 儲存使用者和發票數據
+            registerMessage.textContent = '註冊成功！請返回登入頁面。';
+            registerMessage.style.color = 'green';
+            
+            setTimeout(() => {
+                showPage('login-section');
+                registerForm.reset();
+                registerMessage.textContent = '';
+            }, 1500);
+        });
+        
+        window.saveInvoice = function() {
+            saveMessage.textContent = '';
+            const invNo = newInvoiceInput.value.trim();
+
+            if (invNo.length !== 8 || !/^\d{8}$/.test(invNo)) {
+                saveMessage.textContent = '請輸入有效的8碼數字發票號碼！';
+                saveMessage.style.color = 'red';
+                return;
+            }
+            
+            if (userInvoices[currentUser].includes(invNo)) {
+                 saveMessage.textContent = '這張發票號碼已經儲存過了。';
+                 saveMessage.style.color = 'orange';
+                 return;
+            }
+
+            userInvoices[currentUser].push(invNo);
+            renderSavedInvoices(); 
+            newInvoiceInput.value = ''; 
+            bulkResultMessage.textContent = ''; 
+            saveUserData(); // 儲存發票數據
+            
+            saveMessage.textContent = `發票號碼 ${invNo} 儲存成功！`;
+            saveMessage.style.color = 'green';
+            
+            setTimeout(() => saveMessage.textContent = '', 1500);
+        }
+
+        // --- 自動對獎邏輯 (使用指定的對獎訊息和顏色) ---
+        window.checkAllInvoices = function() {
+            if (!isAuthenticated) {
+                bulkResultMessage.textContent = '請先登入才能使用自動對獎功能。';
+                bulkResultMessage.style.color = 'orange';
+                return;
+            }
+            
+            const invoices = userInvoices[currentUser] || [];
+            const selectedMonthKey = winningSelectBulk.value;
+            const winningData = allWinningNumbers[selectedMonthKey];
+
+            if (!winningData) {
+                 bulkResultMessage.textContent = '請選擇有效的開獎期別。';
+                 bulkResultMessage.style.color = 'red';
+                 return;
+            }
+            if (invoices.length === 0) {
+                bulkResultMessage.textContent = '您沒有儲存任何發票，請先新增。';
+                bulkResultMessage.style.color = 'orange';
+                return;
+            }
+
+            let foundWinner = invoices.some(invNo => isWinning(invNo, winningData));
+
+            if (foundWinner) {
+                // ⭐️ 中獎：使用您指定的紅字訊息
+                bulkResultMessage.textContent = '恭喜你中獎了！請找阿綸';
+                bulkResultMessage.style.color = 'red'; 
+            } else {
+                // ⭐️ 沒中獎：使用您指定的灰字訊息
+                bulkResultMessage.textContent = '很可惜，你沒中獎，再接再厲 🙁';
+                bulkResultMessage.style.color = 'gray'; 
+            }
+        }
+
+        // --- 單張發票對獎邏輯 (使用指定的對獎訊息和顏色) ---
+        window.checkWinning = function() {
+            const invNo = document.getElementById('invoice-number').value.trim();
+            const resultMessage = document.getElementById('result-message');
+            const selectedMonthKey = document.getElementById('winning-term-select').value; 
+            const winningData = allWinningNumbers[selectedMonthKey];
+            
+            resultMessage.style.color = 'black';
+            
+            if (!winningData) {
+                 resultMessage.textContent = '請先選擇開獎期別。';
+                 resultMessage.style.color = 'red';
+                 return;
+            }
+            
+            if (invNo.length !== 8 || !/^\d{8}$/.test(invNo)) {
+                resultMessage.textContent = '請輸入8碼數字的發票號碼。';
+                resultMessage.style.color = 'black';
+                return;
+            }
+
+            if (isWinning(invNo, winningData)) {
+                // ⭐️ 中獎：使用您指定的紅字訊息
+                resultMessage.textContent = '恭喜你中獎了！請找阿綸';
+                resultMessage.style.color = 'red'; 
+            } else {
+                 // ⭐️ 沒中獎：使用您指定的灰字訊息
+                 resultMessage.textContent = '很可惜，你沒中獎，再接再厲 🙁';
+                 resultMessage.style.color = 'gray'; 
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
